@@ -34,6 +34,6 @@ image = pipe(
     guidance_scale=1.0,
     true_cfg=4.0,
     num_inference_steps=50,
-    generator=torch.Generator("gpu").manual_seed(0),
+    generator=torch.Generator("cpu").manual_seed(0),
 ).images[0]
 image.save("image_fill.jpg")
