@@ -4,6 +4,9 @@ from diffusers import FluxTransformer2DModel
 
 # from gfs.store import local
 from pipeline_flux_fill_with_cfg import FluxFillCFGPipeline
+from cvat_parser import Dataset
+
+dataset = Dataset()
 
 transformer_onereward = FluxTransformer2DModel.from_pretrained(
     "bytedance-research/OneReward",
@@ -18,10 +21,11 @@ pipe = FluxFillCFGPipeline.from_pretrained(
 ).to("cuda")
 
 # Image Fill
-image = load_image("assets/image.png")
-mask = load_image("assets/mask_fill.png")
+image_url, mask_url = next(dataset)
+image = load_image(image_url)
+mask = load_image(mask_url)
 image = pipe(
-    prompt='the words "ByteDance", and in the next line "OneReward"',
+    prompt="remove",
     negative_prompt="nsfw",
     image=image,
     mask_image=mask,
@@ -30,6 +34,6 @@ image = pipe(
     guidance_scale=1.0,
     true_cfg=4.0,
     num_inference_steps=50,
-    generator=torch.Generator("cpu").manual_seed(0),
+    generator=torch.Generator("gpu").manual_seed(0),
 ).images[0]
 image.save("image_fill.jpg")
