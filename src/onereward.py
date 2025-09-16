@@ -12,6 +12,8 @@ transformer_onereward = FluxTransformer2DModel.from_pretrained(
     "bytedance-research/OneReward",
     subfolder="flux.1-fill-dev-OneReward-transformer",
     torch_dtype=torch.bfloat16,
+    device_map="cuda",
+    low_cpu_mem_usage=True,
 )
 
 pipe = FluxFillCFGPipeline.from_pretrained(
