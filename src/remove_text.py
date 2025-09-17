@@ -60,7 +60,7 @@ if __name__ == "__main__":
     ):
         result = remover.run(data)
         metadata[data.frame_number] = result
+        with open(metadata_path, "w") as fp:
+            json.dump(metadata, fp)
 
-    with open(metadata_path, "w") as fp:
-        json.dump(metadata, fp)
     upload_to_gs_uri(metadata_path, GSUri(f"{GSDIR}/metadata.json"))
