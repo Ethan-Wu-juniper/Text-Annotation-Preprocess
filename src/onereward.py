@@ -2,8 +2,7 @@ import torch
 from diffusers.utils import load_image
 from diffusers import FluxTransformer2DModel
 
-# from gfs.store import local
-from pipeline_flux_fill_with_cfg import FluxFillCFGPipeline
+from sdk.pipeline_flux_fill_with_cfg import FluxFillCFGPipeline
 from cvat_parser import Dataset
 
 dataset = Dataset()
