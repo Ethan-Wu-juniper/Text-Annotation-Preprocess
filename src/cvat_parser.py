@@ -89,7 +89,8 @@ class FluxDataset:
                 self.boxes[frame_number].append(box)
 
         self._frame_keys = sorted(self.boxes.keys())
-        self._current_frame_index = 0
+        with open("current_index.txt", "r") as fp:
+            self._current_frame_index = fp.read()
 
     def _fetch(self, index: int) -> FluxData:
         current_frame = self._frame_keys[index]
@@ -109,6 +110,8 @@ class FluxDataset:
 
         data = self._fetch(self._current_frame_index)
         self._current_frame_index += 1
+        with open("current_index.txt", "w") as fp:
+            fp.write(self._current_frame_index)
         return data
 
     def __len__(self):

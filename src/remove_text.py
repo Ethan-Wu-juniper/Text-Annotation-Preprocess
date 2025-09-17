@@ -1,7 +1,6 @@
 import json
 import torch
 from tqdm import tqdm
-from itertools import islice
 from diffusers.utils import load_image
 from diffusers import FluxTransformer2DModel
 
@@ -52,9 +51,8 @@ class TextRemover:
 if __name__ == "__main__":
     dataset = FluxDataset()
     remover = TextRemover()
-    max_iter = 5
     metadata = {}
-    for data in tqdm(islice(dataset, max_iter), total=max_iter):
+    for data in tqdm(dataset, total=len(dataset)):
         result = remover.run(data)
         metadata[data.frame_number] = result
 
