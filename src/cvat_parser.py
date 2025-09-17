@@ -91,6 +91,15 @@ class FluxDataset:
         self._frame_keys = sorted(self.boxes.keys())
         self._current_frame_index = 0
 
+    def _fetch(self, index: int) -> FluxData:
+        current_frame = self._frame_keys[index]
+        boxes = self.boxes[current_frame]
+        task = self.tasks.get(boxes[0].task_id)
+        mask = create_mask_from_boxes(boxes, task.width, task.height)
+        image = extract_frame(task.url, current_frame - task.start_frame)
+
+        return FluxData(image=image, mask=mask, frame_number=current_frame)
+
     def __iter__(self):
         return self
 
@@ -98,17 +107,20 @@ class FluxDataset:
         if self._current_frame_index >= len(self._frame_keys):
             raise StopIteration
 
-        current_frame = self._frame_keys[self._current_frame_index]
-        boxes = self.boxes[current_frame]
-        task = self.tasks.get(boxes[0].task_id)
-        mask = create_mask_from_boxes(boxes, task.width, task.height)
-        image = extract_frame(task.url, current_frame - task.start_frame)
+        data = self._fetch(self._current_frame_index)
         self._current_frame_index += 1
+        return data
 
-        return FluxData(image=image, mask=mask, frame_number=current_frame)
+    def __len__(self):
+        return len(self._frame_keys)
+
+    def __getitem__(self, key: int):
+        return self._fetch(key)
 
 
 if __name__ == "__main__":
     dataset = FluxDataset()
-    item = next(dataset)
-    print(item)
+    # item = next(dataset)
+    # print(item)
+    print(len(dataset))
+    print(dataset[2])
