@@ -108,10 +108,10 @@ class FluxDataset:
         if self._current_frame_index >= len(self._frame_keys):
             raise StopIteration
 
+        with open("current_index.txt", "w") as fp:
+            fp.write(str(self._current_frame_index))
         data = self._fetch(self._current_frame_index)
         self._current_frame_index += 1
-        with open("current_index.txt", "w") as fp:
-            fp.write(self._current_frame_index)
         return data
 
     def __len__(self):
