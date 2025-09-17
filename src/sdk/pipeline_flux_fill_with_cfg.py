@@ -232,83 +232,77 @@ class FluxFillCFGPipeline(FluxFillPipeline):
         )
         self._num_timesteps = len(timesteps)
 
-        with self.progress_bar(total=num_inference_steps) as progress_bar:
-            for i, t in enumerate(timesteps):
-                if self.interrupt:
-                    continue
+        for i, t in enumerate(timesteps):
+            if self.interrupt:
+                continue
 
-                # timestep per-sample (matches upstream)
-                timestep = t.expand(latents.shape[0]).to(latents.dtype)
+            # timestep per-sample (matches upstream)
+            timestep = t.expand(latents.shape[0]).to(latents.dtype)
 
-                if use_cfg:
-                    # Build a 2x batch: [uncond, cond]
-                    latents_in = torch.cat([latents, latents], dim=0)
-                    masked_in = torch.cat(
-                        [masked_image_latents, masked_image_latents], dim=0
-                    )
-                    pooled_in = torch.cat(
-                        [neg_pooled_prompt_embeds, pos_pooled_prompt_embeds], dim=0
-                    )
-                    prompt_in = torch.cat([neg_prompt_embeds, pos_prompt_embeds], dim=0)
-                    guidance_in = guidance.repeat(2) if guidance is not None else None
-                    timestep_in = t.expand(latents_in.shape[0]).to(latents.dtype)
+            if use_cfg:
+                # Build a 2x batch: [uncond, cond]
+                latents_in = torch.cat([latents, latents], dim=0)
+                masked_in = torch.cat(
+                    [masked_image_latents, masked_image_latents], dim=0
+                )
+                pooled_in = torch.cat(
+                    [neg_pooled_prompt_embeds, pos_pooled_prompt_embeds], dim=0
+                )
+                prompt_in = torch.cat([neg_prompt_embeds, pos_prompt_embeds], dim=0)
+                guidance_in = guidance.repeat(2) if guidance is not None else None
+                timestep_in = t.expand(latents_in.shape[0]).to(latents.dtype)
 
-                    noise_pred_all = self.transformer(
-                        hidden_states=torch.cat((latents_in, masked_in), dim=2),
-                        timestep=timestep_in / 1000,
-                        guidance=guidance_in,
-                        pooled_projections=pooled_in,
-                        encoder_hidden_states=prompt_in,
-                        txt_ids=text_ids,
-                        img_ids=latent_image_ids,
-                        joint_attention_kwargs=self.joint_attention_kwargs,
-                        return_dict=False,
-                    )[0]
-                    noise_pred_neg, noise_pred_pos = noise_pred_all.chunk(2, dim=0)
-                    noise_pred = noise_pred_neg + true_cfg * (
-                        noise_pred_pos - noise_pred_neg
-                    )
-                else:
-                    # Upstream single-branch path
-                    noise_pred = self.transformer(
-                        hidden_states=torch.cat((latents, masked_image_latents), dim=2),
-                        timestep=timestep / 1000,
-                        guidance=guidance,
-                        pooled_projections=pos_pooled_prompt_embeds,
-                        encoder_hidden_states=pos_prompt_embeds,
-                        txt_ids=text_ids,
-                        img_ids=latent_image_ids,
-                        joint_attention_kwargs=self.joint_attention_kwargs,
-                        return_dict=False,
-                    )[0]
-
-                latents_dtype = latents.dtype
-                latents = self.scheduler.step(
-                    noise_pred, t, latents, return_dict=False
+                noise_pred_all = self.transformer(
+                    hidden_states=torch.cat((latents_in, masked_in), dim=2),
+                    timestep=timestep_in / 1000,
+                    guidance=guidance_in,
+                    pooled_projections=pooled_in,
+                    encoder_hidden_states=prompt_in,
+                    txt_ids=text_ids,
+                    img_ids=latent_image_ids,
+                    joint_attention_kwargs=self.joint_attention_kwargs,
+                    return_dict=False,
                 )[0]
-                if latents.dtype != latents_dtype:
-                    if torch.backends.mps.is_available():
-                        latents = latents.to(latents_dtype)
+                noise_pred_neg, noise_pred_pos = noise_pred_all.chunk(2, dim=0)
+                noise_pred = noise_pred_neg + true_cfg * (
+                    noise_pred_pos - noise_pred_neg
+                )
+            else:
+                # Upstream single-branch path
+                noise_pred = self.transformer(
+                    hidden_states=torch.cat((latents, masked_image_latents), dim=2),
+                    timestep=timestep / 1000,
+                    guidance=guidance,
+                    pooled_projections=pos_pooled_prompt_embeds,
+                    encoder_hidden_states=pos_prompt_embeds,
+                    txt_ids=text_ids,
+                    img_ids=latent_image_ids,
+                    joint_attention_kwargs=self.joint_attention_kwargs,
+                    return_dict=False,
+                )[0]
 
-                if callback_on_step_end is not None:
-                    callback_kwargs = {}
-                    for k in callback_on_step_end_tensor_inputs:
-                        if k == "prompt_embeds":
-                            callback_kwargs[k] = pos_prompt_embeds
-                        else:
-                            callback_kwargs[k] = locals()[k]
-                    callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
+            latents_dtype = latents.dtype
+            latents = self.scheduler.step(
+                noise_pred, t, latents, return_dict=False
+            )[0]
+            if latents.dtype != latents_dtype:
+                if torch.backends.mps.is_available():
+                    latents = latents.to(latents_dtype)
 
-                    latents = callback_outputs.pop("latents", latents)
-                    pos_prompt_embeds = callback_outputs.pop(
-                        "prompt_embeds", pos_prompt_embeds
-                    )
+            if callback_on_step_end is not None:
+                callback_kwargs = {}
+                for k in callback_on_step_end_tensor_inputs:
+                    if k == "prompt_embeds":
+                        callback_kwargs[k] = pos_prompt_embeds
+                    else:
+                        callback_kwargs[k] = locals()[k]
+                callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
 
-                # Progress
-                if i == len(timesteps) - 1 or (
-                    (i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0
-                ):
-                    progress_bar.update()
+                latents = callback_outputs.pop("latents", latents)
+                pos_prompt_embeds = callback_outputs.pop(
+                    "prompt_embeds", pos_prompt_embeds
+                )
+
 
         # ---------- 6) Decode / Postprocess ----------
         if output_type == "latent":

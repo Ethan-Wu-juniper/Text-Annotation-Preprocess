@@ -52,7 +52,7 @@ if __name__ == "__main__":
     dataset = FluxDataset()
     remover = TextRemover()
     metadata = {}
-    for data in tqdm(dataset, total=len(dataset)):
+    for data in tqdm(dataset, total=len(dataset), desc=f"running {dataset._current_frame_index} data"):
         result = remover.run(data)
         metadata[data.frame_number] = result
 
