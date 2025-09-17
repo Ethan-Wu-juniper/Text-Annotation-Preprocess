@@ -24,6 +24,12 @@ class Box(BaseModel):
     ybr: float
 
 
+class FluxData(BaseModel):
+    image: str
+    mask: str
+    frame_number: int
+
+
 def create_mask_from_boxes(boxes: list[Box], width: int, height: int):
     """處理多個 boxes"""
     mask = np.zeros((height, width), dtype=np.uint8)
@@ -47,7 +53,7 @@ def create_mask_from_boxes(boxes: list[Box], width: int, height: int):
     return output_path
 
 
-class Dataset:
+class FluxDataset:
     def __init__(self):
         tree = ET.parse("./annotation/cvat_for_video.xml")
         root = tree.getroot()
@@ -88,7 +94,7 @@ class Dataset:
     def __iter__(self):
         return self
 
-    def __next__(self) -> tuple[str, str]:
+    def __next__(self) -> FluxData:
         if self._current_frame_index >= len(self._frame_keys):
             raise StopIteration
 
@@ -99,10 +105,10 @@ class Dataset:
         image = extract_frame(task.url, current_frame - task.start_frame)
         self._current_frame_index += 1
 
-        return image, mask
+        return FluxData(image=image, mask=mask, frame_number=current_frame)
 
 
 if __name__ == "__main__":
-    dataset = Dataset()
-    image, mask = next(dataset)
-    print(image, mask)
+    dataset = FluxDataset()
+    item = next(dataset)
+    print(item)
