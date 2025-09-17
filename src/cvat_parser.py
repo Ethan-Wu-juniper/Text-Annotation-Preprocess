@@ -90,7 +90,7 @@ class FluxDataset:
 
         self._frame_keys = sorted(self.boxes.keys())
         with open("current_index.txt", "r") as fp:
-            self._current_frame_index = fp.read()
+            self._current_frame_index = int(fp.read())
 
     def _fetch(self, index: int) -> FluxData:
         current_frame = self._frame_keys[index]
