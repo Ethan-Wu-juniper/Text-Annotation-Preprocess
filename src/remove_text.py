@@ -1,3 +1,4 @@
+import json
 import torch
 from tqdm import tqdm
 from itertools import islice
@@ -7,7 +8,10 @@ from diffusers import FluxTransformer2DModel
 from sdk.pipeline_flux_fill_with_cfg import FluxFillCFGPipeline
 from cvat_parser import FluxDataset, FluxData
 from gfs.temp import filename
+from gfs.utils.gs import upload_to_gs_uri
+from gfs.anyuri import GSUri
 from gfs.store import remote
+from constant import GSDIR
 
 
 class TextRemover:
@@ -42,12 +46,19 @@ class TextRemover:
 
         output_path = filename(".jpg")
         image.save(output_path)
-        return remote(output_path)
+        return remote(output_path, location=GSDIR)
 
 
 if __name__ == "__main__":
     dataset = FluxDataset()
-    # remover = TextRemover()
+    remover = TextRemover()
     max_iter = 5
+    metadata = {}
     for data in tqdm(islice(dataset, max_iter), total=max_iter):
-        pass
+        result = remover.run(data)
+        metadata[data.frame_number] = result
+
+    path = filename(".json")
+    with open(path, "w") as fp:
+        json.dump(metadata, fp)
+    upload_to_gs_uri(path, GSUri(f"{GSDIR}/metadata.json"))
