@@ -51,12 +51,16 @@ class TextRemover:
 if __name__ == "__main__":
     dataset = FluxDataset()
     remover = TextRemover()
-    metadata = {}
-    for data in tqdm(dataset, total=len(dataset), desc=f"running {dataset._current_frame_index} data"):
+    metadata_path = "metadata.json"
+    with open(metadata_path, "r") as fp:
+        metadata = json.load(fp)
+
+    for data in tqdm(
+        dataset, total=len(dataset), desc=f"running {dataset._current_frame_index} data"
+    ):
         result = remover.run(data)
         metadata[data.frame_number] = result
 
-    path = filename(".json")
-    with open(path, "w") as fp:
+    with open(metadata_path, "w") as fp:
         json.dump(metadata, fp)
-    upload_to_gs_uri(path, GSUri(f"{GSDIR}/metadata.json"))
+    upload_to_gs_uri(metadata_path, GSUri(f"{GSDIR}/metadata.json"))

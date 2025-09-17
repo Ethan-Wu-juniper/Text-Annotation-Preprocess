@@ -282,9 +282,7 @@ class FluxFillCFGPipeline(FluxFillPipeline):
                 )[0]
 
             latents_dtype = latents.dtype
-            latents = self.scheduler.step(
-                noise_pred, t, latents, return_dict=False
-            )[0]
+            latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
             if latents.dtype != latents_dtype:
                 if torch.backends.mps.is_available():
                     latents = latents.to(latents_dtype)
@@ -302,7 +300,6 @@ class FluxFillCFGPipeline(FluxFillPipeline):
                 pos_prompt_embeds = callback_outputs.pop(
                     "prompt_embeds", pos_prompt_embeds
                 )
-
 
         # ---------- 6) Decode / Postprocess ----------
         if output_type == "latent":
